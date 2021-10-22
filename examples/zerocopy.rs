@@ -1,3 +1,4 @@
+use std::cmp::{max, min};
 use clap::{crate_version, App, Arg};
 use fuser::{
     FileAttr, FileType, Filesystem, MountOption, ReplyAttr, ReplyData, ReplyDirectory, ReplyEntry,
@@ -64,9 +65,11 @@ fn zero(name: String) -> Result<Zero> {
     let mut buf = Vec::with_capacity(attrs[1].size as usize);
     unsafe {
         buf.set_len(buf.capacity());
-        buf = memmap::MmapOptions::new().map(&file)?.into_vec();
+        let ans = memmap::MmapOptions::new().map(&file)?;
+        println!("mmap len {}", ans.len())
     }
 
+    println!("buf len {} cap {}", buf.len(), buf.capacity());
     return Ok(Zero{
         file: file,
         attrs: attrs,
@@ -127,7 +130,8 @@ impl Filesystem for Zero {
     ) {
         match ino {
             2 => {
-                reply.data(&self.buffer[0..n]);
+                let end = min(offset as usize + _size as usize, self.buffer.len() as usize);
+                reply.data(&self.buffer[offset as usize..end]);
             }
             _ => reply.error(ENOENT),
         }
